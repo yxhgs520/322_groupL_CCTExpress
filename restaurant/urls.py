@@ -1,0 +1,67 @@
+"""
+URL configuration for restaurant project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from . import views
+
+urlpatterns = [
+    # Admin
+    path('admin/', admin.site.urls),
+    
+    # Authentication
+    path('login/', views.user_login, name='login'),
+    path('logout/', views.user_logout, name='logout'),
+    path('register/', views.user_register, name='register'),
+    
+    # Main pages
+    path('', views.index, name='index'),
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('profile/', views.profile, name='profile'),
+    path('add-deposit/', views.add_deposit, name='add_deposit'),
+    
+    # Dish pages
+    path('dish/<int:dish_id>/', views.dish_detail, name='dish_detail'),
+    
+    # AI Chat
+    path('chat/', views.ai_chat, name='ai_chat'),
+    path('rate-answer/', views.rate_answer, name='rate_answer'),
+    
+    # Order and Cart
+    path('cart/', views.cart, name='cart'),
+    path('cart-data/', views.get_cart_data, name='get_cart_data'),
+    path('add-to-cart/<int:dish_id>/', views.add_to_cart, name='add_to_cart'),
+    path('create-order/', views.create_order, name='create_order'),
+    path('cancel-order/<int:order_id>/', views.cancel_order, name='cancel_order'),
+    
+    # Stage 4: Delivery Bidding and Reputation
+    path('delivery-orders/', views.delivery_orders, name='delivery_orders'),
+    path('bid-on-delivery/', views.bid_on_delivery, name='bid_on_delivery'),
+    path('file-complaint-compliment/', views.file_complaint_compliment, name='file_complaint_compliment'),
+    path('my-complaints-compliments/', views.my_complaints_compliments, name='my_complaints_compliments'),
+    
+    # Stage 5: Creative Feature - Route Planning
+    path('delivery-route/<int:order_id>/', views.get_delivery_route, name='get_delivery_route'),
+    path('delivery-route-map/<int:order_id>/', views.delivery_route_map, name='delivery_route_map'),
+    path('optimize-routes/', views.optimize_delivery_routes, name='optimize_delivery_routes'),
+]
+
+# Serve media files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Delivery Dashboard - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-truck"></i> Delivery Dashboard - {{ delivery_person.user.get_full_name|default:delivery_person.user.username }}
+                    </h2>
+                    <p class="card-text">Track your delivery performance and customer feedback.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery Performance -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-star fa-2x text-warning"></i>
+                    <h5 class="mt-2">Average Rating</h5>
+                    <h3 class="text-primary">{{ delivery_rating }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-shopping-cart fa-2x text-info"></i>
+                    <h5 class="mt-2">Total Deliveries</h5>
+                    <h3 class="text-primary">{{ recent_deliveries.count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                    <h5 class="mt-2">Complaints</h5>
+                    <h3 class="text-danger">{{ complaints.count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-thumbs-up fa-2x text-success"></i>
+                    <h5 class="mt-2">Compliments</h5>
+                    <h3 class="text-success">{{ compliments.count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Deliveries -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-shopping-cart"></i> Recent Deliveries</h3>
+            {% if recent_deliveries %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Status</th>
+                            <th>Total Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_deliveries %}
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>{{ order.customer.user.username }}</td>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>${{ order.total_amount }}</td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No recent deliveries found.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Complaints -->
+    {% if complaints %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-exclamation-triangle text-danger"></i> Recent Complaints</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Complainant</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for complaint in complaints %}
+                        <tr>
+                            <td>{{ complaint.title }}</td>
+                            <td>{{ complaint.complainant.user.username }}</td>
+                            <td>
+                                <span class="badge bg-{% if complaint.status == 'pending' %}warning{% elif complaint.status == 'investigating' %}info{% elif complaint.status == 'resolved' %}success{% else %}danger{% endif %}">
+                                    {{ complaint.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ complaint.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Compliments -->
+    {% if compliments %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-thumbs-up text-success"></i> Recent Compliments</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Complimenter</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for compliment in compliments %}
+                        <tr>
+                            <td>{{ compliment.title }}</td>
+                            <td>{{ compliment.complimenter.user.username }}</td>
+                            <td>
+                                <span class="badge bg-{% if compliment.status == 'pending' %}warning{% elif compliment.status == 'approved' %}success{% else %}danger{% endif %}">
+                                    {{ compliment.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ compliment.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Performance Tips -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-lightbulb"></i> Performance Tips</h5>
+                    <ul class="mb-0">
+                        <li>Maintain a high delivery rating to get more orders</li>
+                        <li>Respond to customer feedback promptly</li>
+                        <li>Keep track of your delivery times</li>
+                        <li>Communicate clearly with customers</li>
+                        <li>Report any issues to management immediately</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

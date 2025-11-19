@@ -1,0 +1,10 @@
+# Copy this file to .env and fill in your actual values
+
+# OpenRouteService API Configuration
+OPENROUTESERVICE_API_KEY=your-api-key-here
+
+# Django Settings
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+
+

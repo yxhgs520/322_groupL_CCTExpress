@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}Welcome to Our Restaurant{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Welcome to CCT Express</h1>
+                <p class="lead mb-4">Experience AI-powered ordering with personalized recommendations and efficient delivery.</p>
+                {% if not user.is_authenticated %}
+                    <a href="{% url 'register' %}" class="btn btn-light btn-lg me-3">Get Started</a>
+                    <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg">Login</a>
+                {% endif %}
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="fas fa-utensils" style="font-size: 8rem; opacity: 0.3;"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Popular Dishes Section -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-fire text-danger"></i> Most Popular Dishes
+        </h2>
+        <div class="row">
+            {% for dish in popular_dishes %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card dish-card h-100">
+                    {% if dish.image %}
+                        <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}">
+                    {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="fas fa-utensils fa-3x text-muted"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ dish.name }}</h5>
+                        <p class="card-text">{{ dish.description|truncatewords:15 }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="h5 text-primary">${{ dish.price }}</span>
+                            <div class="rating-stars">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= dish.get_average_rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <small class="text-muted ms-1">({{ dish.get_average_rating|floatformat:1 }})</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="{% url 'dish_detail' dish.id %}" class="btn btn-outline-primary flex-fill">View Details</a>
+                            {% if user.is_authenticated and user.customer %}
+                                {% if not dish.is_vip_only or user.customer.is_vip %}
+                                    <button class="btn btn-primary flex-fill" onclick="addToCart({{ dish.id }})">
+                                        <i class="fas fa-shopping-cart"></i> Add to Cart
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center">
+                <p class="text-muted">No popular dishes available at the moment.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Top Rated Dishes Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-star text-warning"></i> Top Rated Dishes
+        </h2>
+        <div class="row">
+            {% for dish in top_rated_dishes %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card dish-card h-100">
+                    {% if dish.image %}
+                        <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}">
+                    {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="fas fa-utensils fa-3x text-muted"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ dish.name }}</h5>
+                        <p class="card-text">{{ dish.description|truncatewords:15 }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="h5 text-primary">${{ dish.price }}</span>
+                            <div class="rating-stars">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= dish.get_average_rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <small class="text-muted ms-1">({{ dish.get_average_rating|floatformat:1 }})</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="{% url 'dish_detail' dish.id %}" class="btn btn-outline-primary flex-fill">View Details</a>
+                            {% if user.is_authenticated and user.customer %}
+                                {% if not dish.is_vip_only or user.customer.is_vip %}
+                                    <button class="btn btn-primary flex-fill" onclick="addToCart({{ dish.id }})">
+                                        <i class="fas fa-shopping-cart"></i> Add to Cart
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center">
+                <p class="text-muted">No top-rated dishes available at the moment.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Top Chefs Section -->
+{% if top_chefs %}
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-chef-hat text-success"></i> Our Top Chefs
+        </h2>
+        <div class="row">
+            {% for chef in top_chefs %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-user-circle fa-4x text-primary mb-3"></i>
+                        <h5 class="card-title">{{ chef.user.get_full_name|default:chef.user.username }}</h5>
+                        <p class="card-text">Chef</p>
+                        <div class="rating-stars">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= chef.get_average_rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <small class="text-muted ms-1">({{ chef.get_average_rating|floatformat:1 }})</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Full Menu Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-book-open text-info"></i> Full Menu
+        </h2>
+        <div class="row">
+            {% for dish in dishes %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card dish-card h-100">
+                    {% if dish.image %}
+                        <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}">
+                    {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                            <i class="fas fa-utensils fa-2x text-muted"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h6 class="card-title">{{ dish.name }}</h6>
+                        <p class="card-text small">{{ dish.description|truncatewords:10 }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-primary fw-bold">${{ dish.price }}</span>
+                            {% if dish.is_vip_only %}
+                                <span class="vip-badge">VIP Only</span>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
+                            <a href="{% url 'dish_detail' dish.id %}" class="btn btn-sm btn-outline-primary flex-fill">View</a>
+                            {% if user.is_authenticated and user.customer %}
+                                {% if not dish.is_vip_only or user.customer.is_vip %}
+                                    <button class="btn btn-sm btn-primary" onclick="addToCart({{ dish.id }})" title="Add to Cart">
+                                        <i class="fas fa-cart-plus"></i>
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center">
+                <p class="text-muted">No dishes available at the moment.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<script>
+function addToCart(dishId) {
+    // Get CSRF token
+    const csrftoken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    
+    if (!csrftoken) {
+        alert('Please login to add items to cart.');
+        window.location.href = '{% url "login" %}';
+        return;
+    }
+    
+    fetch(`/add-to-cart/${dishId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            return response.text().then(text => {
+                throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Item added to cart successfully!');
+            // Update cart count if displayed
+            const cartCount = document.getElementById('cart-count');
+            if (cartCount) {
+                cartCount.textContent = data.cart_count || 0;
+            }
+        } else {
+            alert(data.error || 'Failed to add item to cart.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to add to cart: ' + error.message);
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

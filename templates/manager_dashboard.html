@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Manager Dashboard - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-user-tie"></i> Manager Dashboard - {{ manager.user.get_full_name|default:manager.user.username }}
+                    </h2>
+                    <p class="card-text">Manage your restaurant operations and staff.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                    <h5 class="mt-2">Pending Complaints</h5>
+                    <h3 class="text-danger">{{ pending_complaints }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-thumbs-up fa-2x text-warning"></i>
+                    <h5 class="mt-2">Pending Compliments</h5>
+                    <h3 class="text-warning">{{ pending_compliments }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-users fa-2x text-info"></i>
+                    <h5 class="mt-2">Total Customers</h5>
+                    <h3 class="text-info">{{ total_customers }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-crown fa-2x text-warning"></i>
+                    <h5 class="mt-2">VIP Customers</h5>
+                    <h3 class="text-warning">{{ vip_customers }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-pie"></i> Customer Statistics</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Total Customers:</strong> {{ total_customers }}</p>
+                            <p class="mb-1"><strong>VIP Customers:</strong> {{ vip_customers }}</p>
+                            <p class="mb-0"><strong>Blacklisted:</strong> {{ blacklisted_customers }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Regular Customers:</strong> {{ total_customers|add:"-"|add:vip_customers }}</p>
+                            <p class="mb-1"><strong>VIP Percentage:</strong> 
+                                {% if total_customers > 0 %}
+                                    {{ vip_customers|floatformat:0|div:total_customers|mul:100|floatformat:1 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-tasks"></i> Pending Tasks</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><i class="fas fa-exclamation-triangle text-danger"></i> {{ pending_complaints }} complaints to review</li>
+                        <li><i class="fas fa-thumbs-up text-warning"></i> {{ pending_compliments }} compliments to approve</li>
+                        <li><i class="fas fa-user-plus text-info"></i> New customer registrations to process</li>
+                        <li><i class="fas fa-chart-line text-success"></i> Performance reviews to conduct</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-shopping-cart"></i> Recent Orders</h3>
+            {% if recent_orders %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Status</th>
+                            <th>Total Amount</th>
+                            <th>Delivery Person</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>{{ order.customer.user.username }}</td>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>${{ order.total_amount }}</td>
+                            <td>
+                                {% if order.delivery_person %}
+                                    {{ order.delivery_person.user.username }}
+                                {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="/admin/restaurant/order/{{ order.id }}/change/" class="btn btn-sm btn-outline-primary">Manage</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No recent orders found.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <a href="/admin/restaurant/complaint/" class="btn btn-danger btn-lg w-100">
+                        <i class="fas fa-exclamation-triangle"></i><br>
+                        Manage Complaints
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="/admin/restaurant/customer/" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-users"></i><br>
+                        Manage Customers
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="/admin/restaurant/chef/" class="btn btn-success btn-lg w-100">
+                        <i class="fas fa-chef-hat"></i><br>
+                        Manage Chefs
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="/admin/restaurant/deliveryperson/" class="btn btn-info btn-lg w-100">
+                        <i class="fas fa-truck"></i><br>
+                        Manage Delivery
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

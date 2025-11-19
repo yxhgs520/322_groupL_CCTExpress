@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ dish.name }} - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <!-- Dish Image -->
+            {% if dish.image %}
+                <img src="{{ dish.image.url }}" class="img-fluid rounded" alt="{{ dish.name }}" style="width: 100%; max-width: 400px; aspect-ratio: 1 / 1; object-fit: cover;">
+            {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center rounded" style="width: 100%; max-width: 400px; aspect-ratio: 1 / 1;">
+                    <i class="fas fa-utensils fa-5x text-muted"></i>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-6">
+            <!-- Dish Information -->
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">{{ dish.name }}</h1>
+                    
+                    {% if dish.is_vip_only %}
+                        <span class="vip-badge mb-3">VIP Exclusive</span>
+                    {% endif %}
+                    
+                    <p class="card-text">{{ dish.description }}</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="text-primary">${{ dish.price }}</h3>
+                        <div class="rating-stars">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= avg_rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span class="ms-2">({{ avg_rating }})</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Chef:</strong> {{ dish.chef.user.get_full_name|default:dish.chef.user.username }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Status:</strong> 
+                        <span class="badge bg-{% if dish.is_available %}success{% else %}danger{% endif %}">
+                            {% if dish.is_available %}Available{% else %}Unavailable{% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if user.is_authenticated and dish.is_available %}
+                        {% if not dish.is_vip_only or user.customer.is_vip %}
+                            <button class="btn btn-primary btn-lg" onclick="addToCart({{ dish.id }})">
+                                <i class="fas fa-shopping-cart"></i> Add to Cart
+                            </button>
+                            <a href="{% url 'cart' %}" class="btn btn-outline-primary btn-lg ms-2">
+                                <i class="fas fa-shopping-cart"></i> View Cart
+                            </a>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-crown"></i> This dish is exclusive to VIP customers.
+                            </div>
+                        {% endif %}
+                    {% elif not user.is_authenticated %}
+                        <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> Login to Order
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reviews Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3><i class="fas fa-star"></i> Customer Reviews</h3>
+            
+            {% if ratings %}
+                <div class="row">
+                    {% for rating in ratings %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title">{{ rating.customer.user.username }}</h6>
+                                        <div class="rating-stars">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= rating.rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">{{ rating.created_at|date:"M d, Y" }}</small>
+                                </div>
+                                {% if rating.review %}
+                                    <p class="card-text mt-2">{{ rating.review }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No reviews yet. Be the first to review this dish!
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function addToCart(dishId) {
+    // Get CSRF token
+    const csrftoken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    
+    if (!csrftoken) {
+        alert('Please login to add items to cart.');
+        window.location.href = '{% url "login" %}';
+        return;
+    }
+    
+    fetch(`/add-to-cart/${dishId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            return response.text().then(text => {
+                throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Item added to cart successfully!');
+            // Update cart count if displayed
+            const cartCount = document.getElementById('cart-count');
+            if (cartCount) {
+                cartCount.textContent = data.cart_count || 0;
+            }
+        } else {
+            alert(data.error || 'Failed to add item to cart.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to add to cart: ' + error.message);
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

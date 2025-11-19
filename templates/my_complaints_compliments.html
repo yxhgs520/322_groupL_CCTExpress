@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}My Complaints & Compliments - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-comments"></i> My Complaints & Compliments</h2>
+            
+            <!-- File New Complaint/Compliment -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">File New Complaint or Compliment</h5>
+                            <form id="complaintForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Order ID <span class="text-danger">*</span></label>
+                                        <select class="form-select" name="order_id" id="order_id" required>
+                                            <option value="">Select an order</option>
+                                            {% for order in customer_orders %}
+                                            <option value="{{ order.id }}">Order #{{ order.id }} - {{ order.created_at|date:"M d, Y" }} - ${{ order.total_amount }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <small class="form-text text-muted">Select the order related to this complaint/compliment</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Type <span class="text-danger">*</span></label>
+                                        <select class="form-select" name="type" required>
+                                            <option value="">Select type</option>
+                                            <option value="complaint">Complaint</option>
+                                            <option value="compliment">Compliment</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Target <span class="text-danger">*</span></label>
+                                        <select class="form-select" name="target_type" id="target_type" required>
+                                            <option value="">Select target</option>
+                                            <option value="chef">Chef</option>
+                                            <option value="delivery">Delivery Person</option>
+                                        </select>
+                                        <small class="form-text text-muted">Target will be automatically determined from the selected order</small>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" class="form-control" name="title" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" name="description" rows="3" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Submit
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- My Complaints -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-exclamation-triangle text-danger"></i> My Complaints</h3>
+                    {% if complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Target</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Manager Response</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for complaint in complaints %}
+                                <tr>
+                                    <td>{{ complaint.title }}</td>
+                                    <td>
+                                        {% if complaint.chef %}
+                                            Chef: {{ complaint.chef.user.username }}
+                                        {% elif complaint.delivery_person %}
+                                            Delivery: {{ complaint.delivery_person.user.username }}
+                                        {% elif complaint.customer %}
+                                            Customer: {{ complaint.customer.user.username }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if complaint.status == 'pending' %}warning{% elif complaint.status == 'investigating' %}info{% elif complaint.status == 'resolved' %}success{% else %}danger{% endif %}">
+                                            {{ complaint.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ complaint.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if complaint.manager_response %}
+                                            {{ complaint.manager_response|truncatewords:10 }}
+                                        {% else %}
+                                            <span class="text-muted">No response yet</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You haven't filed any complaints yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- My Compliments -->
+            <div class="row">
+                <div class="col-12">
+                    <h3><i class="fas fa-thumbs-up text-success"></i> My Compliments</h3>
+                    {% if compliments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Target</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Manager Response</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for compliment in compliments %}
+                                <tr>
+                                    <td>{{ compliment.title }}</td>
+                                    <td>
+                                        {% if compliment.chef %}
+                                            Chef: {{ compliment.chef.user.username }}
+                                        {% elif compliment.delivery_person %}
+                                            Delivery: {{ compliment.delivery_person.user.username }}
+                                        {% elif compliment.customer %}
+                                            Customer: {{ compliment.customer.user.username }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if compliment.status == 'pending' %}warning{% elif compliment.status == 'approved' %}success{% else %}danger{% endif %}">
+                                            {{ compliment.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ compliment.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if compliment.manager_response %}
+                                            {{ compliment.manager_response|truncatewords:10 }}
+                                        {% else %}
+                                            <span class="text-muted">No response yet</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You haven't submitted any compliments yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('complaintForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        type: formData.get('type'),
+        target_type: formData.get('target_type'),
+        order_id: formData.get('order_id'),
+        title: formData.get('title'),
+        description: formData.get('description')
+    };
+    
+    if (!data.order_id) {
+        alert('Please select an order.');
+        return;
+    }
+    
+    if (!data.target_type) {
+        alert('Please select a target (Chef or Delivery Person).');
+        return;
+    }
+    
+    fetch('/file-complaint-compliment/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': (typeof getCsrfToken === 'function' ? getCsrfToken() : (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''))
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(error => {
+        alert('Submission failed: ' + error);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Profile Information -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        <i class="fas fa-user"></i> Profile Information
+                    </h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Username:</strong> {{ customer.user.username }}</p>
+                            <p><strong>Name:</strong> {{ customer.user.get_full_name|default:"Not provided" }}</p>
+                            <p><strong>Email:</strong> {{ customer.user.email|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Account Type:</strong> 
+                                {% if customer.is_vip %}
+                                    <span class="vip-badge">VIP Customer</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Regular Customer</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Member Since:</strong> {{ customer.created_at|date:"F d, Y" }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if customer.is_blacklisted %}
+                                    <span class="badge bg-danger">Blacklisted</span>
+                                {% else %}
+                                    <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Information -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        <i class="fas fa-wallet"></i> Financial Information
+                    </h3>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-primary">${{ customer.deposit }}</h4>
+                                <p class="text-muted">Current Deposit</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-success">${{ customer.total_spent }}</h4>
+                                <p class="text-muted">Total Spent</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ customer.order_count }}</h4>
+                                <p class="text-muted">Total Orders</p>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row mt-3">
+                        <div class="col-12 text-center">
+                            <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#depositModal">
+                                <i class="fas fa-plus-circle"></i> Add Deposit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deposit Modal -->
+            <div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="depositModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="depositModalLabel">
+                                <i class="fas fa-wallet"></i> Add Deposit
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="depositForm">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="depositAmount" class="form-label">Deposit Amount ($)</label>
+                                    <input type="number" class="form-control" id="depositAmount" 
+                                           name="amount" step="0.01" min="0.01" required 
+                                           placeholder="Enter amount to deposit">
+                                    <div class="form-text">Enter the amount you want to add to your account.</div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="submitDeposit()">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning Information -->
+            {% if customer.warnings > 0 %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        <i class="fas fa-exclamation-triangle text-warning"></i> Warning Information
+                    </h3>
+                    <div class="alert alert-{% if customer.warnings >= 3 %}danger{% elif customer.warnings >= 2 %}warning{% else %}info{% endif %}">
+                        <strong>Warning Count:</strong> {{ customer.warnings }}
+                        {% if customer.warnings >= 3 %}
+                            <br><strong>Status:</strong> You have reached the maximum warning limit. Please contact management.
+                        {% elif customer.warnings >= 2 %}
+                            <br><strong>Status:</strong> You are close to the warning limit. Please be careful with your orders.
+                        {% else %}
+                            <br><strong>Status:</strong> You have some warnings. Please follow restaurant policies.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- VIP Benefits -->
+            {% if customer.is_vip %}
+            <div class="card mb-4 border-warning">
+                <div class="card-body">
+                    <h3 class="card-title text-warning">
+                        <i class="fas fa-crown"></i> VIP Benefits
+                    </h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> 5% discount on all orders</li>
+                                <li><i class="fas fa-check text-success"></i> 1 free delivery every 3 orders</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> Access to exclusive VIP dishes</li>
+                                <li><i class="fas fa-check text-success"></i> Double weight for complaints/compliments</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <!-- Recent Orders -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-history"></i> Recent Orders
+                    </h5>
+                    {% if orders %}
+                    <div class="list-group list-group-flush">
+                        {% for order in orders %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Order #{{ order.id }}</h6>
+                                <small>{{ order.created_at|date:"M d" }}</small>
+                            </div>
+                            <p class="mb-1">
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </p>
+                            <small>${{ order.total_amount }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No orders yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-cog"></i> Account Actions
+                    </h5>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                        <a href="{% url 'index' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-utensils"></i> Browse Menu
+                        </a>
+                        {% if not customer.is_vip and customer.total_spent >= 100 %}
+                        <div class="alert alert-info">
+                            <small><i class="fas fa-info-circle"></i> You're eligible for VIP status!</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function submitDeposit() {
+    const amountInput = document.getElementById('depositAmount');
+    const amount = parseFloat(amountInput.value);
+    
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid amount greater than 0.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('amount', amount);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch('{% url "add_deposit" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Deposit added successfully! New balance: $' + data.new_balance);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add deposit'));
+        }
+    })
+    .catch(error => {
+        alert('Error: Failed to process deposit request');
+        console.error('Error:', error);
+    });
+}
+
+// Reset form when modal is closed
+document.getElementById('depositModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('depositForm').reset();
+});
+</script>
+{% endblock %}

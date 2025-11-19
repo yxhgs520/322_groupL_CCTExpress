@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Chef Dashboard - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-chef-hat"></i> Chef Dashboard - {{ chef.user.get_full_name|default:chef.user.username }}
+                    </h2>
+                    <p class="card-text">Manage your dishes and track your performance.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chef Performance -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-star fa-2x text-warning"></i>
+                    <h5 class="mt-2">Average Rating</h5>
+                    <h3 class="text-primary">{{ chef_rating }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-utensils fa-2x text-info"></i>
+                    <h5 class="mt-2">Total Dishes</h5>
+                    <h3 class="text-primary">{{ chef_dishes.count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                    <h5 class="mt-2">Complaints</h5>
+                    <h3 class="text-danger">{{ complaints.count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-thumbs-up fa-2x text-success"></i>
+                    <h5 class="mt-2">Compliments</h5>
+                    <h3 class="text-success">{{ compliments.count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chef's Dishes -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-utensils"></i> Your Dishes</h3>
+            <div class="row">
+                {% for dish in chef_dishes %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card dish-card h-100">
+                        {% if dish.image %}
+                            <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}" style="height: 150px; object-fit: cover;">
+                        {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <i class="fas fa-utensils fa-2x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title">{{ dish.name }}</h6>
+                            <p class="card-text small">{{ dish.description|truncatewords:10 }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-primary fw-bold">${{ dish.price }}</span>
+                                <div class="rating-stars">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= dish.get_average_rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <small class="text-muted ms-1">({{ dish.get_average_rating|floatformat:1 }})</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <span class="badge bg-{% if dish.is_available %}success{% else %}danger{% endif %}">
+                                    {% if dish.is_available %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                                {% if dish.is_vip_only %}
+                                    <span class="vip-badge">VIP Only</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You haven't created any dishes yet. Contact the manager to add dishes to your profile.
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Complaints -->
+    {% if complaints %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-exclamation-triangle text-danger"></i> Recent Complaints</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Complainant</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for complaint in complaints %}
+                        <tr>
+                            <td>{{ complaint.title }}</td>
+                            <td>{{ complaint.complainant.user.username }}</td>
+                            <td>
+                                <span class="badge bg-{% if complaint.status == 'pending' %}warning{% elif complaint.status == 'investigating' %}info{% elif complaint.status == 'resolved' %}success{% else %}danger{% endif %}">
+                                    {{ complaint.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ complaint.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Compliments -->
+    {% if compliments %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-thumbs-up text-success"></i> Recent Compliments</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Complimenter</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for compliment in compliments %}
+                        <tr>
+                            <td>{{ compliment.title }}</td>
+                            <td>{{ compliment.complimenter.user.username }}</td>
+                            <td>
+                                <span class="badge bg-{% if compliment.status == 'pending' %}warning{% elif compliment.status == 'approved' %}success{% else %}danger{% endif %}">
+                                    {{ compliment.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ compliment.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Orders -->
+    <div class="row">
+        <div class="col-12">
+            <h3><i class="fas fa-shopping-cart"></i> Recent Orders for Your Dishes</h3>
+            {% if recent_orders %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Dish</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>{{ order.customer.user.username }}</td>
+                            <td>
+                                {% for item in order.orderitem_set.all %}
+                                    {% if item.dish.chef == chef %}
+                                        {{ item.dish.name }} (x{{ item.quantity }})
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No recent orders for your dishes.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

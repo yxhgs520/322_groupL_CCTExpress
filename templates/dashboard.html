@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-tachometer-alt"></i> Welcome back, {{ customer.user.get_full_name|default:customer.user.username }}!
+                        {% if customer.is_vip %}
+                            <span class="vip-badge">VIP</span>
+                        {% endif %}
+                    </h2>
+                    <p class="card-text">Here's your personalized dashboard with recommendations based on your preferences.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Info & Warnings -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-user"></i> Account Information</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Deposit:</strong> ${{ customer.deposit }}</p>
+                            <p class="mb-1"><strong>Total Spent:</strong> ${{ customer.total_spent }}</p>
+                            <p class="mb-0"><strong>Orders:</strong> {{ customer.order_count }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Warnings:</strong> 
+                                <span class="badge bg-{% if customer.warnings == 0 %}success{% elif customer.warnings < 3 %}warning{% else %}danger{% endif %}">
+                                    {{ customer.warnings }}
+                                </span>
+                            </p>
+                            <p class="mb-1"><strong>Status:</strong> 
+                                {% if customer.is_vip %}
+                                    <span class="vip-badge">VIP</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Regular</span>
+                                {% endif %}
+                            </p>
+                            {% if customer.is_blacklisted %}
+                                <p class="mb-0 text-danger"><strong>Blacklisted</strong></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- VIP Benefits -->
+        {% if customer.is_vip %}
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning"><i class="fas fa-crown"></i> VIP Benefits</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><i class="fas fa-check text-success"></i> 5% discount on all orders</li>
+                        <li><i class="fas fa-check text-success"></i> 1 free delivery every 3 orders</li>
+                        <li><i class="fas fa-check text-success"></i> Access to exclusive VIP dishes</li>
+                        <li><i class="fas fa-check text-success"></i> Double weight for complaints/compliments</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Most Ordered Dishes -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-fire text-danger"></i> Your Most Ordered Dishes</h3>
+            <div class="row">
+                {% for dish in most_ordered %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card dish-card h-100">
+                        {% if dish.image %}
+                            <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}" style="height: 150px; object-fit: cover;">
+                        {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <i class="fas fa-utensils fa-2x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title">{{ dish.name }}</h6>
+                            <p class="card-text small">{{ dish.description|truncatewords:10 }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-primary fw-bold">${{ dish.price }}</span>
+                                <small class="text-muted">Ordered {{ dish.order_count }} times</small>
+                            </div>
+                            <a href="{% url 'dish_detail' dish.id %}" class="btn btn-sm btn-primary mt-2">Order Again</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You haven't ordered any dishes yet. Start exploring our menu!
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Highest Rated Dishes -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-star text-warning"></i> Your Highest Rated Dishes</h3>
+            <div class="row">
+                {% for dish in highest_rated %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card dish-card h-100">
+                        {% if dish.image %}
+                            <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}" style="height: 150px; object-fit: cover;">
+                        {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <i class="fas fa-utensils fa-2x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title">{{ dish.name }}</h6>
+                            <p class="card-text small">{{ dish.description|truncatewords:10 }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-primary fw-bold">${{ dish.price }}</span>
+                                <div class="rating-stars">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= dish.customer_rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <small class="text-muted ms-1">({{ dish.customer_rating|floatformat:1 }})</small>
+                                </div>
+                            </div>
+                            <a href="{% url 'dish_detail' dish.id %}" class="btn btn-sm btn-primary mt-2">View Details</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You haven't rated any dishes yet. Rate your orders to see personalized recommendations!
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- VIP Exclusive Dishes -->
+    {% if customer.is_vip and vip_dishes %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3><i class="fas fa-crown text-warning"></i> VIP Exclusive Dishes</h3>
+            <div class="row">
+                {% for dish in vip_dishes %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card dish-card h-100 border-warning">
+                        {% if dish.image %}
+                            <img src="{{ dish.image.url }}" class="card-img-top" alt="{{ dish.name }}" style="height: 150px; object-fit: cover;">
+                        {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <i class="fas fa-utensils fa-2x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title">{{ dish.name }} <span class="vip-badge">VIP Only</span></h6>
+                            <p class="card-text small">{{ dish.description|truncatewords:10 }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-primary fw-bold">${{ dish.price }}</span>
+                                <span class="vip-badge">Exclusive</span>
+                            </div>
+                            <a href="{% url 'dish_detail' dish.id %}" class="btn btn-sm btn-warning mt-2">Order Now</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Orders -->
+    <div class="row">
+        <div class="col-12">
+            <h3><i class="fas fa-history"></i> Recent Orders</h3>
+            {% if recent_orders %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Status</th>
+                            <th>Total</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>${{ order.total_amount }}</td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                {% if order.status == 'pending' %}
+                                <button class="btn btn-sm btn-danger" onclick="cancelOrder({{ order.id }})">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                {% endif %}
+                                {% if order.delivery_person %}
+                                <a href="{% url 'delivery_route_map' order.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-route"></i> View Route
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> You haven't placed any orders yet. Start ordering from our delicious menu!
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function cancelOrder(orderId) {
+    if (!confirm('Are you sure you want to cancel this order? Your deposit will be refunded.')) {
+        return;
+    }
+    
+    fetch(`/cancel-order/${orderId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': (typeof getCsrfToken === 'function' ? getCsrfToken() : (document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''))
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(error => {
+        alert('Failed to cancel order: ' + error);
+    });
+}
+</script>
+{% endblock %}

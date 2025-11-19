@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Delivery Route Map - Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-route"></i> Delivery Route - Order #{{ order.id }}</h2>
+            
+            <!-- Route Information -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Order Information</h5>
+                            <p><strong>Customer:</strong> {{ order.customer.user.username }}</p>
+                            <p><strong>Total Amount:</strong> ${{ order.total_amount }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </p>
+                            <p><strong>Restaurant:</strong> {{ restaurant_address }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Route Information</h5>
+                            <div id="route-info">
+                                <div class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading route information...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Map Container -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Route Map</h5>
+                            <div id="map" style="height: 500px; width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                    {% if user.deliveryperson and order.delivery_person == user.deliveryperson %}
+                    <button class="btn btn-success" onclick="markAsDelivered()">
+                        <i class="fas fa-check"></i> Mark as Delivered
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+let map;
+let routeLayer;
+
+// Initialize map
+function initMap() {
+    // Default center (restaurant location)
+    map = L.map('map').setView([40.7128, -74.0060], 13);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Load route data
+    loadRouteData();
+}
+
+// Load route data from API
+function loadRouteData() {
+    fetch(`/delivery-route/{{ order_id }}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayRouteInfo(data.route);
+                displayRouteOnMap(data.route);
+            } else {
+                displayError(data.error);
+            }
+        })
+        .catch(error => {
+            displayError('Failed to load route data: ' + error);
+        });
+}
+
+// Display route information
+function displayRouteInfo(route) {
+    const routeInfo = document.getElementById('route-info');
+    routeInfo.innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <div class="text-center">
+                    <i class="fas fa-road text-primary"></i>
+                    <h6>Distance</h6>
+                    <p class="mb-0">${route.distance_km} km</h6>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="text-center">
+                    <i class="fas fa-clock text-success"></i>
+                    <h6>Duration</h6>
+                    <p class="mb-0">${route.duration_minutes} min</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Display route on map
+function displayRouteOnMap(route) {
+    // Clear existing route
+    if (routeLayer) {
+        map.removeLayer(routeLayer);
+    }
+    
+    // Add restaurant marker
+    const restaurantIcon = L.divIcon({
+        html: '<i class="fas fa-store text-danger fa-2x"></i>',
+        iconSize: [30, 30],
+        className: 'custom-div-icon'
+    });
+    
+    L.marker([route.restaurant_coords[1], route.restaurant_coords[0]], {
+        icon: restaurantIcon
+    }).addTo(map).bindPopup('<strong>Restaurant</strong><br>Starting Point');
+    
+    // Add customer marker
+    const customerIcon = L.divIcon({
+        html: '<i class="fas fa-home text-primary fa-2x"></i>',
+        iconSize: [30, 30],
+        className: 'custom-div-icon'
+    });
+    
+    L.marker([route.customer_coords[1], route.customer_coords[0]], {
+        icon: customerIcon
+    }).addTo(map).bindPopup('<strong>Customer</strong><br>Delivery Destination');
+    
+    // Add route line if coordinates are available
+    if (route.coordinates && route.coordinates.length > 0) {
+        const routeLine = L.polyline(route.coordinates.map(coord => [coord[1], coord[0]]), {
+            color: 'blue',
+            weight: 4,
+            opacity: 0.7
+        }).addTo(map);
+        
+        routeLayer = routeLine;
+        
+        // Fit map to route
+        map.fitBounds(routeLine.getBounds(), {padding: [20, 20]});
+    } else {
+        // Fallback: show straight line between points
+        const straightLine = L.polyline([
+            [route.restaurant_coords[1], route.restaurant_coords[0]],
+            [route.customer_coords[1], route.customer_coords[0]]
+        ], {
+            color: 'red',
+            weight: 3,
+            opacity: 0.5,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
+        routeLayer = straightLine;
+        map.fitBounds(straightLine.getBounds(), {padding: [20, 20]});
+    }
+}
+
+// Display error message
+function displayError(message) {
+    const routeInfo = document.getElementById('route-info');
+    routeInfo.innerHTML = `
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> ${message}
+        </div>
+    `;
+    
+    // Show basic map with just markers
+    const restaurantIcon = L.divIcon({
+        html: '<i class="fas fa-store text-danger fa-2x"></i>',
+        iconSize: [30, 30],
+        className: 'custom-div-icon'
+    });
+    
+    L.marker([40.7128, -74.0060], {
+        icon: restaurantIcon
+    }).addTo(map).bindPopup('<strong>Restaurant</strong><br>Starting Point');
+}
+
+// Mark order as delivered (for delivery persons)
+function markAsDelivered() {
+    if (confirm('Mark this order as delivered?')) {
+        // This would typically call an API to update order status
+        alert('Order marked as delivered! (This feature would update the order status)');
+    }
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+});
+</script>
+
+<style>
+.custom-div-icon {
+    background: none;
+    border: none;
+    text-align: center;
+    line-height: 1;
+}
+
+.leaflet-popup-content {
+    text-align: center;
+}
+</style>
+{% endblock %}

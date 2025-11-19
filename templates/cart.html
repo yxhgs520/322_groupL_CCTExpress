@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}Shopping Cart - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-shopping-cart"></i> Shopping Cart</h2>
+            
+            {% if dishes %}
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Cart Items -->
+                    <div class="card">
+                        <div class="card-body">
+                            {% for item in dishes %}
+                            <div class="row align-items-center mb-3 pb-3 border-bottom" data-dish-id="{{ item.dish.id }}">
+                                <div class="col-md-2">
+                                    {% if item.dish.image %}
+                                        <img src="{{ item.dish.image.url }}" class="img-fluid rounded" alt="{{ item.dish.name }}" style="width: 80px; height: 80px; object-fit: cover;">
+                                    {% else %}
+                                        <div class="bg-light d-flex align-items-center justify-content-center rounded" style="width: 80px; height: 80px;">
+                                            <i class="fas fa-utensils fa-2x text-muted"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="mb-1 dish-name">{{ item.dish.name }}</h6>
+                                    <small class="text-muted">{{ item.dish.description|truncatewords:10 }}</small>
+                                </div>
+                                <div class="col-md-2">
+                                    <span class="fw-bold dish-price">${{ item.dish.price }}</span>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="input-group">
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="updateQuantity({{ item.dish.id }}, {{ item.quantity|add:'-1' }})">-</button>
+                                        <input type="number" class="form-control form-control-sm text-center dish-quantity" value="{{ item.quantity }}" min="1" id="qty-{{ item.dish.id }}">
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="updateQuantity({{ item.dish.id }}, {{ item.quantity|add:'1' }})">+</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold">${{ item.subtotal }}</span>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="removeItem({{ item.dish.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <!-- Order Summary -->
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Order Summary</h5>
+                            
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span>${{ total_amount|floatformat:2 }}</span>
+                            </div>
+                            
+                            {% if is_vip %}
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <span>VIP Discount (5%):</span>
+                                <span>-${{ discount|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            <hr>
+                            <div class="d-flex justify-content-between mb-3">
+                                <strong>Total:</strong>
+                                <strong>${{ final_amount|floatformat:2 }}</strong>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <strong>Available Deposit:</strong> ${{ customer.deposit|floatformat:2 }}
+                                </small>
+                            </div>
+                            
+                            {% if customer.deposit >= final_amount %}
+                            <button class="btn btn-primary btn-lg w-100" onclick="placeOrder()">
+                                <i class="fas fa-credit-card"></i> Place Order
+                            </button>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Insufficient funds. Please add more deposit to your account.
+                            </div>
+                            <a href="{% url 'profile' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-wallet"></i> Manage Deposit
+                            </a>
+                            {% endif %}
+                            
+                            {% if is_vip %}
+                            <div class="mt-3">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-crown"></i>
+                                    <small>VIP Discount Applied!</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Customer Info -->
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Account Information</h6>
+                            <p class="mb-1"><strong>Deposit:</strong> ${{ customer.deposit|floatformat:2 }}</p>
+                            <p class="mb-1"><strong>Warnings:</strong> 
+                                <span class="badge bg-{% if customer.warnings == 0 %}success{% elif customer.warnings < 3 %}warning{% else %}danger{% endif %}">
+                                    {{ customer.warnings }}
+                                </span>
+                            </p>
+                            {% if customer.is_vip %}
+                                <p class="mb-0"><span class="vip-badge">VIP Customer</span></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">Your cart is empty</h4>
+                <p class="text-muted">Add some delicious dishes to get started!</p>
+                <a href="{% url 'index' %}" class="btn btn-primary">
+                    <i class="fas fa-utensils"></i> Browse Menu
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function updateQuantity(dishId, newQuantity) {
+    if (newQuantity < 1) {
+        removeItem(dishId);
+        return;
+    }
+    
+    fetch(`/add-to-cart/${dishId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        },
+        body: JSON.stringify({quantity: newQuantity})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    });
+}
+
+function removeItem(dishId) {
+    if (confirm('Remove this item from cart?')) {
+        fetch(`/add-to-cart/${dishId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            },
+            body: JSON.stringify({quantity: 0})
+        })
+        .then(response => response.json())
+        .then(data => {
+            location.reload();
+        });
+    }
+}
+
+function placeOrder() {
+    if (confirm('Place this order? This will deduct the amount from your deposit.')) {
+        const cartItems = [];
+        {% for item in dishes %}
+        cartItems.push({
+            dish_id: {{ item.dish.id }},
+            quantity: {{ item.quantity }}
+        });
+        {% endfor %}
+        
+        fetch('/create-order/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({items: cartItems})
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert(`Order placed successfully! Order #${data.order_id}`);
+                // Clear cart
+                fetch('/clear-cart/', {method: 'POST'});
+                window.location.href = '{% url "dashboard" %}';
+            } else {
+                alert(data.error);
+                if (data.warning_added) {
+                    alert(`Warning added! You now have ${data.warnings} warnings.`);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Order error:', error);
+            alert('Order failed: ' + error.message);
+        });
+    }
+}
+
+function getCsrfToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    const name = 'csrftoken=';
+    const decodedCookies = decodeURIComponent(document.cookie || '');
+    const cookies = decodedCookies.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name)) {
+            return cookie.substring(name.length);
+        }
+    }
+    return '';
+}
+</script>
+{% endblock %}

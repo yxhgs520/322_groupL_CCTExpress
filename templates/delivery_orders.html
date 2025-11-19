@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}Delivery Orders - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-truck"></i> Available Delivery Orders</h2>
+            <p class="text-muted">Bid on delivery orders to earn money!</p>
+            
+            <!-- Available Orders -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-list"></i> Available Orders</h3>
+                    {% if available_orders %}
+                    <div class="row">
+                        {% for order in available_orders %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Order #{{ order.id }}</h5>
+                                    <p class="card-text">
+                                        <strong>Customer:</strong> {{ order.customer.user.username }}<br>
+                                        <strong>Total Amount:</strong> ${{ order.total_amount }}<br>
+                                        <strong>Created:</strong> {{ order.created_at|date:"M d, Y H:i" }}
+                                    </p>
+                                    
+                                    <!-- Bid Form -->
+                                    <form class="bid-form" data-order-id="{{ order.id }}">
+                                        <div class="input-group mb-2">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control bid-amount" 
+                                                   placeholder="Your bid amount" step="0.01" min="0.01" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-gavel"></i> Submit Bid
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No orders available for delivery at the moment.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- My Bids -->
+            <div class="row">
+                <div class="col-12">
+                    <h3><i class="fas fa-gavel"></i> My Bids</h3>
+                    {% if my_bids %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>My Bid</th>
+                                    <th>Status</th>
+                                    <th>Bid Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bid in my_bids %}
+                                <tr>
+                                    <td>#{{ bid.order.id }}</td>
+                                    <td>{{ bid.order.customer.user.username }}</td>
+                                    <td>${{ bid.bid_amount }}</td>
+                                    <td>
+                                        {% if bid.is_selected %}
+                                            <span class="badge bg-success">Selected</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ bid.created_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if not bid.is_selected %}
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="updateBid({{ bid.order.id }})">
+                                            <i class="fas fa-edit"></i> Update Bid
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You haven't placed any bids yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle bid form submission
+document.querySelectorAll('.bid-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const orderId = this.dataset.orderId;
+        const bidAmount = this.querySelector('.bid-amount').value;
+        
+        if (!bidAmount || parseFloat(bidAmount) <= 0) {
+            alert('Please enter a valid bid amount.');
+            return;
+        }
+        
+        fetch('/bid-on-delivery/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            },
+            body: JSON.stringify({
+                order_id: parseInt(orderId),
+                bid_amount: parseFloat(bidAmount)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            alert('Bid submission failed: ' + error);
+        });
+    });
+});
+
+function updateBid(orderId) {
+    const newAmount = prompt('Enter new bid amount:');
+    if (newAmount && parseFloat(newAmount) > 0) {
+        fetch('/bid-on-delivery/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            },
+            body: JSON.stringify({
+                order_id: orderId,
+                bid_amount: parseFloat(newAmount)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            alert('Bid update failed: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}

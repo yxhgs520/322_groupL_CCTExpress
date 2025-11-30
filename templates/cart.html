@@ -83,19 +83,41 @@
                                 </small>
                             </div>
                             
-                            {% if customer.deposit >= final_amount %}
-                            <button class="btn btn-primary btn-lg w-100" onclick="placeOrder()">
+                            <!-- Delivery Address Selection -->
+                            <div class="mb-3">
+                                <label for="deliveryAddress" class="form-label">
+                                    <strong>Delivery Address</strong>
+                                </label>
+                                {% if addresses %}
+                                <select class="form-select" id="deliveryAddress" name="address_id">
+                                    {% for address in addresses %}
+                                    <option value="{{ address.id }}" {% if address.is_default %}selected{% endif %}>
+                                        {{ address.recipient_name }} - {{ address.get_full_address }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">
+                                    <a href="{% url 'profile' %}" class="text-decoration-none">Manage addresses</a>
+                                </small>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    No delivery address found. Please add an address in your profile.
+                                </div>
+                                <a href="{% url 'profile' %}" class="btn btn-outline-primary btn-sm w-100">
+                                    <i class="fas fa-plus"></i> Add Address
+                                </a>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="orderMemo" class="form-label">Special Instructions (Optional)</label>
+                                <textarea class="form-control" id="orderMemo" rows="2" placeholder="Please leave comments here regarding your order request. We will try our best but no guarantee."></textarea>
+                            </div>
+
+                            <button class="btn btn-primary btn-lg w-100" onclick="placeOrder()" {% if not addresses %}disabled{% endif %}>
                                 <i class="fas fa-credit-card"></i> Place Order
                             </button>
-                            {% else %}
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Insufficient funds. Please add more deposit to your account.
-                            </div>
-                            <a href="{% url 'profile' %}" class="btn btn-outline-primary w-100">
-                                <i class="fas fa-wallet"></i> Manage Deposit
-                            </a>
-                            {% endif %}
                             
                             {% if is_vip %}
                             <div class="mt-3">
@@ -182,6 +204,12 @@ function removeItem(dishId) {
 }
 
 function placeOrder() {
+    const addressSelect = document.getElementById('deliveryAddress');
+    if (!addressSelect || !addressSelect.value) {
+        alert('Please select a delivery address.');
+        return;
+    }
+    
     if (confirm('Place this order? This will deduct the amount from your deposit.')) {
         const cartItems = [];
         {% for item in dishes %}
@@ -191,13 +219,19 @@ function placeOrder() {
         });
         {% endfor %}
         
+        const orderData = {
+            items: cartItems,
+            address_id: parseInt(addressSelect.value),
+            memo: document.getElementById('orderMemo').value
+        };
+        
         fetch('/create-order/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCsrfToken()
             },
-            body: JSON.stringify({items: cartItems})
+            body: JSON.stringify(orderData)
         })
         .then(response => {
             const contentType = response.headers.get('content-type');

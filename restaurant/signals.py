@@ -1,7 +1,7 @@
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.db.models import Count, Avg
-from .models import Customer, Order, Complaint, Compliment, Chef, DeliveryPerson
+from .models import Customer, Order, Complaint, Compliment, Chef, DeliveryPerson, Announcement, ForumPost, KnowledgeBase
 
 
 @receiver(post_save, sender=Order)
@@ -142,3 +142,42 @@ def check_employee_ratings():
     for delivery in delivery_with_high_ratings:
         delivery.bonus_count += 1
         delivery.save()
+
+
+@receiver(post_save, sender=Announcement)
+def sync_announcement_to_kb(sender, instance, created, **kwargs):
+    """Sync Announcement to Knowledge Base"""
+    KnowledgeBase.objects.update_or_create(
+        source_type='announcement',
+        source_id=instance.id,
+        defaults={
+            'question': instance.title,
+            'answer': instance.content,
+            'is_announcement': True,
+            'author': instance.author
+        }
+    )
+
+@receiver(post_delete, sender=Announcement)
+def delete_announcement_from_kb(sender, instance, **kwargs):
+    """Delete Announcement from Knowledge Base"""
+    KnowledgeBase.objects.filter(source_type='announcement', source_id=instance.id).delete()
+
+@receiver(post_save, sender=ForumPost)
+def sync_post_to_kb(sender, instance, created, **kwargs):
+    """Sync Forum Post to Knowledge Base"""
+    KnowledgeBase.objects.update_or_create(
+        source_type='post',
+        source_id=instance.id,
+        defaults={
+            'question': instance.title,
+            'answer': instance.content,
+            'is_announcement': False,
+            'author': instance.author
+        }
+    )
+
+@receiver(post_delete, sender=ForumPost)
+def delete_post_from_kb(sender, instance, **kwargs):
+    """Delete Forum Post from Knowledge Base"""
+    KnowledgeBase.objects.filter(source_type='post', source_id=instance.id).delete()

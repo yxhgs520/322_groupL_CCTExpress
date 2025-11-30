@@ -1,0 +1,494 @@
+{% extends 'base.html' %}
+
+{% block title %}Order #{{ order.id }} - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-receipt"></i> Order #{{ order.id }}</h2>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+
+            <!-- Order Status Badge -->
+            <div class="alert alert-{% if order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                <strong>Status:</strong> {{ order.get_status_display }}
+            </div>
+
+            <!-- Order Basic Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Order Date:</strong> {{ order.created_at|date:"F d, Y H:i" }}</p>
+                            {% if order.delivered_at %}
+                            <p><strong>Delivered Date:</strong> {{ order.delivered_at|date:"F d, Y H:i" }}</p>
+                            {% endif %}
+                            <p><strong>Total Amount:</strong> ${{ order.total_amount|floatformat:2 }}</p>
+                            {% if order.vip_discount > 0 %}
+                            <p><strong>VIP Discount:</strong> -${{ order.vip_discount|floatformat:2 }}</p>
+                            <p><strong>Final Amount:</strong> ${{ order.get_final_amount|floatformat:2 }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if order.delivery_address %}
+                            <p><strong>Delivery Address:</strong><br>
+                                {{ order.delivery_address.recipient_name }}<br>
+                                {{ order.delivery_address.get_full_address }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-utensils"></i> Order Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Dish</th>
+                                    <th>Chef</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order_items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.dish.name }}</strong>
+                                        {% if item.dish.image %}
+                                        <br><img src="{{ item.dish.image.url }}" alt="{{ item.dish.name }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" class="mt-1">
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.dish.chef.user.username }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>${{ item.price|floatformat:2 }}</td>
+                                    <td>${{ item.get_total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status-specific Content -->
+            {% if order.status == 'pending' %}
+            <!-- Cancel Button for Pending Orders -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <button class="btn btn-danger btn-lg" onclick="cancelOrder({{ order.id }})">
+                        <i class="fas fa-times"></i> Cancel Order
+                    </button>
+                </div>
+            </div>
+            {% elif order.status == 'out_for_delivery' %}
+            <!-- Delivery Information and Map -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-truck"></i> Delivery Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.delivery_person %}
+                    <p><strong>Delivery Person:</strong> {{ order.delivery_person.user.username }}</p>
+                    {% endif %}
+                    {% if route_data %}
+                    <div id="deliveryMap" style="height: 400px; width: 100%;"></div>
+                    {% else %}
+                    <p class="text-muted">Map loading...</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% elif order.status == 'delivered' %}
+            <!-- Delivery Information -->
+            {% if order.delivery_person %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-truck"></i> Delivery Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Delivery Person:</strong> {{ order.delivery_person.user.username }}</p>
+                    {% if order.delivered_at %}
+                    <p><strong>Delivered Time:</strong> {{ order.delivered_at|date:"F d, Y H:i" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Rating Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-star"></i> Rate Your Order</h5>
+                </div>
+                <div class="card-body">
+                    <form id="ratingForm">
+                        {% csrf_token %}
+                        <h6>Rate Dishes:</h6>
+                        {% for item in order_items %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ item.dish.name }} (Chef: {{ item.dish.chef.user.username }})</label>
+                            <div class="rating-input" data-dish-id="{{ item.dish.id }}">
+                                {% for i in "12345" %}
+                                <span class="star" data-rating="{{ forloop.counter }}" onclick="setDishRating({{ item.dish.id }}, {{ forloop.counter }})">
+                                    <i class="far fa-star" id="star-{{ item.dish.id }}-{{ forloop.counter }}"></i>
+                                </span>
+                                {% endfor %}
+                                <span class="ms-2 text-muted" id="dish-rating-{{ item.dish.id }}">(Not rated)</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {% if order.delivery_person %}
+                        <hr>
+                        <h6>Rate Delivery Service:</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Delivery by {{ order.delivery_person.user.username }}</label>
+                            <div class="rating-input" data-delivery-id="{{ order.delivery_person.id }}">
+                                {% for i in "12345" %}
+                                <span class="star" data-rating="{{ forloop.counter }}" onclick="setDeliveryRating({{ order.delivery_person.id }}, {{ forloop.counter }})">
+                                    <i class="far fa-star" id="delivery-star-{{ order.delivery_person.id }}-{{ forloop.counter }}"></i>
+                                </span>
+                                {% endfor %}
+                                <span class="ms-2 text-muted" id="delivery-rating-{{ order.delivery_person.id }}">(Not rated)</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- File Complaint/Compliment Section -->
+            {% if remaining_allowed > 0 %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-comment-dots"></i> File New Complaint or Compliment</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> You can file {{ remaining_allowed }} more complaint(s) or compliment(s) for this order.
+                    </div>
+                    <form id="complaintComplimentForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="targetSelect" class="form-label">Target *</label>
+                            <select class="form-select" id="targetSelect" name="target" required>
+                                <option value="">Select a target...</option>
+                                {% for target in available_targets %}
+                                {% if target.type == 'dish' %}
+                                <option value="dish_{{ target.id }}" data-target-type="dish" data-target-id="{{ target.id }}" data-chef-id="{{ target.chef.id }}">
+                                    {{ target.name }} (Chef: {{ target.chef.user.username }})
+                                </option>
+                                {% elif target.type == 'delivery' %}
+                                <option value="delivery_{{ target.id }}" data-target-type="delivery" data-target-id="{{ target.id }}">
+                                    Delivery Service ({{ target.delivery_person.user.username }})
+                                </option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="typeSelect" class="form-label">Type *</label>
+                            <select class="form-select" id="typeSelect" name="type" required>
+                                <option value="">Select type...</option>
+                                <option value="complaint">Complaint</option>
+                                <option value="compliment">Compliment</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="complaintTitle" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="complaintTitle" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="complaintDescription" class="form-label">Description *</label>
+                            <textarea class="form-control" id="complaintDescription" name="description" rows="4" required></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="submitComplaintCompliment({{ order.id }})">
+                            <i class="fas fa-paper-plane"></i> Submit
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i> You have already filed the maximum number of complaints/compliments for this order.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    const name = 'csrftoken=';
+    const decodedCookies = decodeURIComponent(document.cookie || '');
+    const cookies = decodedCookies.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name)) {
+            return cookie.substring(name.length);
+        }
+    }
+    return '';
+}
+
+function cancelOrder(orderId) {
+    if (!confirm('Are you sure you want to cancel this order? Your deposit will be refunded.')) {
+        return;
+    }
+    
+    fetch('/cancel-order/' + orderId + '/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(error => {
+        alert('Failed to cancel order: ' + error);
+    });
+}
+
+function setDishRating(dishId, rating) {
+    fetch('/order/rate-dish/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            order_id: {{ order.id }},
+            dish_id: dishId,
+            rating: rating
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const ratingDiv = document.querySelector('[data-dish-id="' + dishId + '"]');
+            const stars = ratingDiv.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.innerHTML = '<i class="fas fa-star text-warning"></i>';
+                } else {
+                    star.innerHTML = '<i class="far fa-star"></i>';
+                }
+            });
+            document.getElementById('dish-rating-' + dishId).textContent = '(' + rating + '/5)';
+        } else {
+            alert('Error: ' + (data.error || 'Failed to rate dish'));
+        }
+    })
+    .catch(error => {
+        alert('Failed to rate dish: ' + error);
+    });
+}
+
+function setDeliveryRating(deliveryPersonId, rating) {
+    fetch('/order/rate-delivery/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            order_id: {{ order.id }},
+            delivery_person_id: deliveryPersonId,
+            rating: rating
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const ratingDiv = document.querySelector('[data-delivery-id="' + deliveryPersonId + '"]');
+            const stars = ratingDiv.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.innerHTML = '<i class="fas fa-star text-warning"></i>';
+                } else {
+                    star.innerHTML = '<i class="far fa-star"></i>';
+                }
+            });
+            document.getElementById('delivery-rating-' + deliveryPersonId).textContent = '(' + rating + '/5)';
+        } else {
+            alert('Error: ' + (data.error || 'Failed to rate delivery'));
+        }
+    })
+    .catch(error => {
+        alert('Failed to rate delivery: ' + error);
+    });
+}
+
+function submitComplaintCompliment(orderId) {
+    const targetSelect = document.getElementById('targetSelect');
+    const typeSelect = document.getElementById('typeSelect');
+    const title = document.getElementById('complaintTitle').value.trim();
+    const description = document.getElementById('complaintDescription').value.trim();
+    
+    if (!targetSelect.value || !typeSelect.value || !title || !description) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    const selectedOption = targetSelect.options[targetSelect.selectedIndex];
+    const targetType = selectedOption.getAttribute('data-target-type');
+    const targetId = selectedOption.getAttribute('data-target-id');
+    
+    const data = {
+        order_id: orderId,
+        target_type: targetType,
+        target_id: parseInt(targetId),
+        type: typeSelect.value,
+        title: title,
+        description: description
+    };
+    
+    if (targetType === 'dish') {
+        const chefId = selectedOption.getAttribute('data-chef-id');
+        data.chef_id = parseInt(chefId);
+    } else if (targetType === 'delivery') {
+        data.delivery_person_id = parseInt(targetId);
+    }
+    
+    fetch('/order/file-complaint-compliment/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to submit complaint/compliment'));
+        }
+    })
+    .catch(error => {
+        alert('Failed to submit: ' + error);
+    });
+}
+
+// Initialize ratings display
+document.addEventListener('DOMContentLoaded', function() {
+    var dishRatings = {
+        {% for rating_data in dish_ratings %}
+        {{ rating_data.dish_id }}: {% if rating_data.rating %}{{ rating_data.rating }}{% else %}null{% endif %}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    {% for item in order_items %}
+    if (dishRatings[{{ item.dish.id }}] !== null && dishRatings[{{ item.dish.id }}] !== undefined) {
+        var dishRatingDiv = document.querySelector('[data-dish-id="{{ item.dish.id }}"]');
+        if (dishRatingDiv) {
+            var stars = dishRatingDiv.querySelectorAll('.star');
+            stars.forEach(function(star, index) {
+                if (index < dishRatings[{{ item.dish.id }}]) {
+                    star.innerHTML = '<i class="fas fa-star text-warning"></i>';
+                }
+            });
+            document.getElementById('dish-rating-{{ item.dish.id }}').textContent = '(' + dishRatings[{{ item.dish.id }}] + '/5)';
+        }
+    }
+    {% endfor %}
+    
+    {% if order.delivery_person and delivery_rating %}
+    var deliveryRating = {{ delivery_rating }};
+    var deliveryRatingDiv = document.querySelector('[data-delivery-id="{{ order.delivery_person.id }}"]');
+    if (deliveryRatingDiv) {
+        var stars = deliveryRatingDiv.querySelectorAll('.star');
+        stars.forEach(function(star, index) {
+            if (index < deliveryRating) {
+                star.innerHTML = '<i class="fas fa-star text-warning"></i>';
+            }
+        });
+        document.getElementById('delivery-rating-{{ order.delivery_person.id }}').textContent = '(' + deliveryRating + '/5)';
+    }
+    {% endif %}
+});
+
+{% if route_data %}
+function initMap() {
+    const map = L.map('deliveryMap').setView([{{ route_data.restaurant_coords.1 }}, {{ route_data.restaurant_coords.0 }}], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    L.marker([{{ route_data.restaurant_coords.1 }}, {{ route_data.restaurant_coords.0 }}])
+        .addTo(map)
+        .bindPopup('Restaurant: {{ route_data.restaurant_address }}');
+    
+    L.marker([{{ route_data.delivery_coords.1 }}, {{ route_data.delivery_coords.0 }}])
+        .addTo(map)
+        .bindPopup('Delivery Address: {{ route_data.delivery_address }}');
+    
+    L.polyline([
+        [{{ route_data.restaurant_coords.1 }}, {{ route_data.restaurant_coords.0 }}],
+        [{{ route_data.delivery_coords.1 }}, {{ route_data.delivery_coords.0 }}]
+    ], {color: 'blue', weight: 3}).addTo(map);
+    
+    map.fitBounds([
+        [{{ route_data.restaurant_coords.1 }}, {{ route_data.restaurant_coords.0 }}],
+        [{{ route_data.delivery_coords.1 }}, {{ route_data.delivery_coords.0 }}]
+    ]);
+}
+
+const link = document.createElement('link');
+link.rel = 'stylesheet';
+link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+document.head.appendChild(link);
+
+const script = document.createElement('script');
+script.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
+script.onload = initMap;
+document.head.appendChild(script);
+{% endif %}
+</script>
+
+<style>
+.rating-input .star {
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #ddd;
+    margin-right: 5px;
+}
+.rating-input .star:hover {
+    color: #ffc107;
+}
+</style>
+{% endblock %}
+

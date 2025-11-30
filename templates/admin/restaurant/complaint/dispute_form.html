@@ -1,0 +1,65 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}Dispute Complaint{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='restaurant' %}">Restaurant</a>
+    &rsaquo; <a href="{% url 'admin:restaurant_complaint_changelist' %}">Complaints</a>
+    &rsaquo; Dispute Complaint
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Dispute Complaint: {{ complaint.title }}</h1>
+
+<div class="module">
+    <h2>Complaint Details</h2>
+    <table>
+        <tr>
+            <th>Title:</th>
+            <td>{{ complaint.title }}</td>
+        </tr>
+        <tr>
+            <th>Description:</th>
+            <td>{{ complaint.description|linebreaks }}</td>
+        </tr>
+        <tr>
+            <th>Complainant:</th>
+            <td>{{ complaint.complainant.user.username }}</td>
+        </tr>
+        <tr>
+            <th>Order:</th>
+            <td>Order #{{ complaint.order.id }}</td>
+        </tr>
+        <tr>
+            <th>Status:</th>
+            <td>{{ complaint.get_status_display }}</td>
+        </tr>
+    </table>
+</div>
+
+<form method="post" action="">
+    {% csrf_token %}
+    <div class="module">
+        <h2>Your Dispute Response</h2>
+        <fieldset class="module aligned">
+            <div class="form-row">
+                <div>
+                    <label for="id_response">Dispute Response:</label>
+                    <textarea name="response" id="id_response" rows="10" cols="80" required></textarea>
+                    <p class="help">Please provide your response to this complaint. Explain your side of the situation.</p>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+    
+    <div class="submit-row">
+        <input type="submit" value="Submit Dispute" class="default" />
+        <a href="{% url 'admin:restaurant_complaint_change' complaint.id %}" class="button">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+

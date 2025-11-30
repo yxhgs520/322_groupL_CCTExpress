@@ -151,6 +151,181 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- Address Book -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-address-book"></i> Address Book
+                        </h3>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+                            <i class="fas fa-plus"></i> Add Address
+                        </button>
+                    </div>
+                    
+                    {% if addresses %}
+                    <div class="list-group list-group-flush">
+                        {% for address in addresses %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">
+                                        {{ address.recipient_name }}
+                                        {% if address.is_default %}
+                                            <span class="badge bg-primary">Default</span>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="mb-1 small">{{ address.get_full_address }}</p>
+                                    {% if address.phone %}
+                                    <p class="mb-0 small text-muted"><i class="fas fa-phone"></i> {{ address.phone }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    {% if not address.is_default %}
+                                    <button class="btn btn-outline-primary" onclick="setDefaultAddress({{ address.id }})" title="Set as Default">
+                                        <i class="fas fa-star"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-outline-secondary" onclick="editAddress({{ address.id }})" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteAddress({{ address.id }})" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No addresses saved. Add your first address to get started!</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Add Address Modal -->
+            <div class="modal fade" id="addAddressModal" tabindex="-1" aria-labelledby="addAddressModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="addAddressModalLabel">
+                                <i class="fas fa-plus"></i> Add New Address
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="addAddressForm">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="recipientName" class="form-label">Recipient Name *</label>
+                                    <input type="text" class="form-control" id="recipientName" name="recipient_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="streetAddress" class="form-label">Street Address *</label>
+                                    <input type="text" class="form-control" id="streetAddress" name="street_address" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="city" class="form-label">City *</label>
+                                        <input type="text" class="form-control" id="city" name="city" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="state" class="form-label">State/Province *</label>
+                                        <input type="text" class="form-control" id="state" name="state" required>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="zipCode" class="form-label">ZIP/Postal Code *</label>
+                                        <input type="text" class="form-control" id="zipCode" name="zip_code" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="country" class="form-label">Country</label>
+                                        <input type="text" class="form-control" id="country" name="country" value="USA">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone Number</label>
+                                    <input type="text" class="form-control" id="phone" name="phone">
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="isDefault" name="is_default">
+                                    <label class="form-check-label" for="isDefault">
+                                        Set as default address
+                                    </label>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="submitAddAddress()">Add Address</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Address Modal -->
+            <div class="modal fade" id="editAddressModal" tabindex="-1" aria-labelledby="editAddressModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editAddressModalLabel">
+                                <i class="fas fa-edit"></i> Edit Address
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editAddressForm">
+                                {% csrf_token %}
+                                <input type="hidden" id="editAddressId" name="address_id">
+                                <div class="mb-3">
+                                    <label for="editRecipientName" class="form-label">Recipient Name *</label>
+                                    <input type="text" class="form-control" id="editRecipientName" name="recipient_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editStreetAddress" class="form-label">Street Address *</label>
+                                    <input type="text" class="form-control" id="editStreetAddress" name="street_address" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editCity" class="form-label">City *</label>
+                                        <input type="text" class="form-control" id="editCity" name="city" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editState" class="form-label">State/Province *</label>
+                                        <input type="text" class="form-control" id="editState" name="state" required>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editZipCode" class="form-label">ZIP/Postal Code *</label>
+                                        <input type="text" class="form-control" id="editZipCode" name="zip_code" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="editCountry" class="form-label">Country</label>
+                                        <input type="text" class="form-control" id="editCountry" name="country">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editPhone" class="form-label">Phone Number</label>
+                                    <input type="text" class="form-control" id="editPhone" name="phone">
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="editIsDefault" name="is_default">
+                                    <label class="form-check-label" for="editIsDefault">
+                                        Set as default address
+                                    </label>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="submitEditAddress()">Update Address</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="col-md-4">
@@ -245,5 +420,195 @@ function submitDeposit() {
 document.getElementById('depositModal').addEventListener('hidden.bs.modal', function () {
     document.getElementById('depositForm').reset();
 });
+
+// Address Book Functions
+function submitAddAddress() {
+    const form = document.getElementById('addAddressForm');
+    const formData = {
+        recipient_name: document.getElementById('recipientName').value.trim(),
+        street_address: document.getElementById('streetAddress').value.trim(),
+        city: document.getElementById('city').value.trim(),
+        state: document.getElementById('state').value.trim(),
+        zip_code: document.getElementById('zipCode').value.trim(),
+        country: document.getElementById('country').value.trim() || 'USA',
+        phone: document.getElementById('phone').value.trim(),
+        is_default: document.getElementById('isDefault').checked
+    };
+    
+    if (!formData.recipient_name || !formData.street_address || !formData.city || !formData.state || !formData.zip_code) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    fetch('{% url "add_address" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Address added successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add address'));
+        }
+    })
+    .catch(error => {
+        alert('Error: Failed to process request');
+        console.error('Error:', error);
+    });
+}
+
+function editAddress(addressId) {
+    // Get address data from the page (you might want to fetch from server)
+    const addressElement = document.querySelector(`[onclick*="editAddress(${addressId})"]`).closest('.list-group-item');
+    // For simplicity, we'll fetch the address data
+    // In a real app, you might want to pass address data via data attributes
+    
+    // Open edit modal
+    const editModal = new bootstrap.Modal(document.getElementById('editAddressModal'));
+    document.getElementById('editAddressId').value = addressId;
+    
+    // Fetch address details
+    fetch(`/address/${addressId}/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const addr = data.address;
+            document.getElementById('editRecipientName').value = addr.recipient_name;
+            document.getElementById('editStreetAddress').value = addr.street_address;
+            document.getElementById('editCity').value = addr.city;
+            document.getElementById('editState').value = addr.state;
+            document.getElementById('editZipCode').value = addr.zip_code;
+            document.getElementById('editCountry').value = addr.country;
+            document.getElementById('editPhone').value = addr.phone || '';
+            document.getElementById('editIsDefault').checked = addr.is_default;
+            editModal.show();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to load address'));
+        }
+    })
+    .catch(error => {
+        alert('Error: Failed to load address');
+        console.error('Error:', error);
+    });
+}
+
+function submitEditAddress() {
+    const addressId = document.getElementById('editAddressId').value;
+    const formData = {
+        recipient_name: document.getElementById('editRecipientName').value.trim(),
+        street_address: document.getElementById('editStreetAddress').value.trim(),
+        city: document.getElementById('editCity').value.trim(),
+        state: document.getElementById('editState').value.trim(),
+        zip_code: document.getElementById('editZipCode').value.trim(),
+        country: document.getElementById('editCountry').value.trim() || 'USA',
+        phone: document.getElementById('editPhone').value.trim(),
+        is_default: document.getElementById('editIsDefault').checked
+    };
+    
+    if (!formData.recipient_name || !formData.street_address || !formData.city || !formData.state || !formData.zip_code) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    fetch(`/address/${addressId}/edit/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Address updated successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to update address'));
+        }
+    })
+    .catch(error => {
+        alert('Error: Failed to process request');
+        console.error('Error:', error);
+    });
+}
+
+function deleteAddress(addressId) {
+    if (!confirm('Are you sure you want to delete this address?')) {
+        return;
+    }
+    
+    fetch(`/address/${addressId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Address deleted successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete address'));
+        }
+    })
+    .catch(error => {
+        alert('Error: Failed to process request');
+        console.error('Error:', error);
+    });
+}
+
+function setDefaultAddress(addressId) {
+    fetch(`/address/${addressId}/set-default/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Default address updated successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to set default address'));
+        }
+    })
+    .catch(error => {
+        alert('Error: Failed to process request');
+        console.error('Error:', error);
+    });
+}
+
+function getCsrfToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    const name = 'csrftoken=';
+    const decodedCookies = decodeURIComponent(document.cookie || '');
+    const cookies = decodedCookies.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name)) {
+            return cookie.substring(name.length);
+        }
+    }
+    return '';
+}
 </script>
 {% endblock %}

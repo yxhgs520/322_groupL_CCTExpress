@@ -161,20 +161,24 @@
                         <a class="nav-link" href="{% url 'index' %}">Home</a>
                     </li>
                     {% if user.is_authenticated %}
+                        {% if not user.chef and not user.deliveryperson %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'profile' %}">Profile</a>
                         </li>
+                        {% endif %}
                         {% if user.deliveryperson %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'delivery_orders' %}">Delivery Orders</a>
                         </li>
                         {% endif %}
+                        {% if user.customer or user.manager %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'my_complaints_compliments' %}">Complaints/Compliments</a>
+                            <a class="nav-link" href="{% url 'forum' %}">Forum</a>
                         </li>
+                        {% endif %}
                         {% if user.manager %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'optimize_delivery_routes' %}">Route Optimization</a>
@@ -193,8 +197,10 @@
                                 {% endif %}
                             </a>
                             <ul class="dropdown-menu">
+                                {% if not user.chef and not user.deliveryperson %}
                                 <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
                                 <li><hr class="dropdown-divider"></li>
+                                {% endif %}
                                 <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
                             </ul>
                         </li>
@@ -385,11 +391,40 @@
                 messages.scrollTop = messages.scrollHeight;
             })
             .catch(error => {
+                console.error('Chat Error:', error);
                 messages.innerHTML = messages.innerHTML.replace(/<div class="mb-2 text-muted"><i class="fas fa-spinner fa-spin"><\/i> AI is thinking...<\/div>/, '');
                 messages.innerHTML += `<div class="mb-2 text-danger"><strong>Error:</strong> Failed to get response</div>`;
             });
             
             input.value = '';
+        }
+
+        function rateAnswer(knowledgeId, rating) {
+            fetch('{% url "rate_answer" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    knowledge_id: knowledgeId,
+                    rating: rating
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const messages = document.getElementById('chatMessages');
+                if (data.flagged) {
+                    messages.innerHTML += `<div class="mb-2 text-danger"><small><em>Feedback received. Answer flagged for review.</em></small></div>`;
+                } else {
+                    messages.innerHTML += `<div class="mb-2 text-success"><small><em>${data.message}</em></small></div>`;
+                }
+                messages.scrollTop = messages.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Rating Error:', error);
+                alert('Failed to submit rating');
+            });
         }
 
         function toggleCart() {

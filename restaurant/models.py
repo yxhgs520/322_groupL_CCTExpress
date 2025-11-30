@@ -147,7 +147,6 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
-        ('preparing', 'Preparing'),
         ('ready', 'Ready'),
         ('out_for_delivery', 'Out for Delivery'),
         ('delivered', 'Delivered'),
@@ -159,6 +158,9 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Total Amount")
     vip_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="VIP Discount")
     delivery_person = models.ForeignKey(DeliveryPerson, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Delivery Person")
+    delivery_address = models.ForeignKey('Address', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Delivery Address")
+    memo = models.TextField(blank=True, null=True, verbose_name="Order Memo", help_text="Customer special requests")
+    delivered_at = models.DateTimeField(null=True, blank=True, verbose_name="Delivered Time")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Order Time")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
 
@@ -267,6 +269,23 @@ class Complaint(models.Model):
         return f"Complaint: {self.title} - {self.complainant.user.username}"
 
 
+class ComplaintDispute(models.Model):
+    """Complaint dispute model for chef/delivery person responses"""
+    complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE, related_name='disputes', verbose_name="Complaint")
+    disputer = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Disputer")
+    response = models.TextField(verbose_name="Dispute Response")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Dispute Time")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
+
+    class Meta:
+        verbose_name = "Complaint Dispute"
+        verbose_name_plural = "Complaint Disputes"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Dispute for Complaint #{self.complaint.id} by {self.disputer.username}"
+
+
 class Compliment(models.Model):
     """Compliment model for user compliments"""
     STATUS_CHOICES = [
@@ -332,10 +351,19 @@ class DiscussionPost(models.Model):
 
 class KnowledgeBase(models.Model):
     """Knowledge base model for AI customer service"""
+    SOURCE_TYPES = [
+        ('manual', 'Manual Entry'),
+        ('announcement', 'Announcement'),
+        ('post', 'Forum Post'),
+    ]
+
     question = models.CharField(max_length=500, verbose_name="Question")
     answer = models.TextField(verbose_name="Answer")
-    author = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Author")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Author")
+    is_announcement = models.BooleanField(default=False, verbose_name="Is Announcement")
     is_flagged = models.BooleanField(default=False, verbose_name="Flagged")
+    source_type = models.CharField(max_length=20, choices=SOURCE_TYPES, default='manual', verbose_name="Source Type")
+    source_id = models.IntegerField(null=True, blank=True, verbose_name="Source ID")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
 
@@ -346,6 +374,41 @@ class KnowledgeBase(models.Model):
 
     def __str__(self):
         return f"Q: {self.question[:50]}..."
+
+class KnowledgeBaseRating(models.Model):
+    """Rating for Knowledge Base items"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    knowledge_base = models.ForeignKey(KnowledgeBase, on_delete=models.CASCADE, related_name='ratings', verbose_name="Knowledge Base Item")
+    score = models.IntegerField(choices=[(i, i) for i in range(6)], verbose_name="Score (0-5)")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Rating Time")
+
+    class Meta:
+        verbose_name = "Knowledge Base Rating"
+        verbose_name_plural = "Knowledge Base Ratings"
+        ordering = ['-created_at']
+        unique_together = ['user', 'knowledge_base']
+
+    def __str__(self):
+        return f"{self.user.username} rated {self.score} for KB#{self.knowledge_base.id}"
+
+
+
+class Announcement(models.Model):
+    """Announcement model for Forum announcements (managed by manager)"""
+    title = models.CharField(max_length=200, verbose_name="Title")
+    content = models.TextField(verbose_name="Content")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Author")
+    is_pinned = models.BooleanField(default=True, verbose_name="Pinned")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
+
+    class Meta:
+        verbose_name = "Announcement"
+        verbose_name_plural = "Announcements"
+        ordering = ['-is_pinned', '-created_at']
+
+    def __str__(self):
+        return f"Announcement: {self.title}"
 
 
 class DeliveryBid(models.Model):
@@ -364,5 +427,164 @@ class DeliveryBid(models.Model):
 
     def __str__(self):
         return f"{self.delivery_person.user.username} bid ${self.bid_amount} for Order #{self.order.id}"
+
+
+class Address(models.Model):
+    """Address model for customer address book"""
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='addresses', verbose_name="Customer")
+    recipient_name = models.CharField(max_length=100, verbose_name="Recipient Name")
+    street_address = models.CharField(max_length=200, verbose_name="Street Address")
+    city = models.CharField(max_length=100, verbose_name="City")
+    state = models.CharField(max_length=100, verbose_name="State/Province")
+    zip_code = models.CharField(max_length=20, verbose_name="ZIP/Postal Code")
+    country = models.CharField(max_length=100, default="USA", verbose_name="Country")
+    phone = models.CharField(max_length=20, blank=True, verbose_name="Phone Number")
+    is_default = models.BooleanField(default=False, verbose_name="Default Address")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
+
+    class Meta:
+        verbose_name = "Address"
+        verbose_name_plural = "Addresses"
+        ordering = ['-is_default', '-created_at']
+
+    def __str__(self):
+        return f"{self.recipient_name} - {self.street_address}, {self.city}"
+
+    def get_full_address(self):
+        """Get full formatted address"""
+        return f"{self.street_address}, {self.city}, {self.state} {self.zip_code}, {self.country}"
+
+
+class ForumPost(models.Model):
+    """Forum post model for manager and customer posts"""
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_posts', verbose_name="Author")
+    title = models.CharField(max_length=200, verbose_name="Title")
+    content = models.TextField(verbose_name="Content")
+    allow_comments = models.BooleanField(default=True, verbose_name="Allow Comments")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
+
+    class Meta:
+        verbose_name = "Forum Post"
+        verbose_name_plural = "Forum Posts"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.author.username}"
+
+    def get_approve_count(self):
+        """Get total approve (👍) count"""
+        return self.post_reactions.filter(reaction_type='approve').count()
+
+    def get_disapprove_count(self):
+        """Get total disapprove (👎) count"""
+        return self.post_reactions.filter(reaction_type='disapprove').count()
+
+    def can_delete(self, user):
+        """Check if user can delete this post"""
+        return self.author == user
+
+
+class ForumComment(models.Model):
+    """Forum comment model for post replies"""
+    post = models.ForeignKey(ForumPost, on_delete=models.CASCADE, related_name='comments', verbose_name="Post")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_comments', verbose_name="Author")
+    content = models.TextField(verbose_name="Content")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
+
+    class Meta:
+        verbose_name = "Forum Comment"
+        verbose_name_plural = "Forum Comments"
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Comment by {self.author.username} on {self.post.title}"
+
+    def get_approve_count(self):
+        """Get total approve (👍) count"""
+        return self.comment_reactions.filter(reaction_type='approve').count()
+
+    def get_disapprove_count(self):
+        """Get total disapprove (👎) count"""
+        return self.comment_reactions.filter(reaction_type='disapprove').count()
+
+    def can_delete(self, user):
+        """Check if user can delete this comment"""
+        return self.author == user
+
+
+class PostReaction(models.Model):
+    """Post reaction model for 👍 and 👎"""
+    REACTION_CHOICES = [
+        ('approve', '👍 Approve'),
+        ('disapprove', '👎 Disapprove'),
+    ]
+
+    post = models.ForeignKey(ForumPost, on_delete=models.CASCADE, related_name='post_reactions', verbose_name="Post")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES, verbose_name="Reaction Type")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
+
+    class Meta:
+        verbose_name = "Post Reaction"
+        verbose_name_plural = "Post Reactions"
+        unique_together = ['post', 'user']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} {self.get_reaction_type_display()} {self.post.title}"
+
+
+class CommentReaction(models.Model):
+    """Comment reaction model for 👍 and 👎"""
+    REACTION_CHOICES = [
+        ('approve', '👍 Approve'),
+        ('disapprove', '👎 Disapprove'),
+    ]
+
+    comment = models.ForeignKey(ForumComment, on_delete=models.CASCADE, related_name='comment_reactions', verbose_name="Comment")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES, verbose_name="Reaction Type")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Time")
+
+    class Meta:
+        verbose_name = "Comment Reaction"
+        verbose_name_plural = "Comment Reactions"
+        unique_together = ['comment', 'user']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} {self.get_reaction_type_display()} comment #{self.comment.id}"
+
+
+class ForumComplaint(models.Model):
+    """Forum complaint model for reporting posts or comments"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('investigating', 'Investigating'),
+        ('resolved', 'Resolved'),
+        ('dismissed', 'Dismissed'),
+    ]
+
+    complainant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_complaints_made', verbose_name="Complainant")
+    post = models.ForeignKey(ForumPost, on_delete=models.CASCADE, null=True, blank=True, related_name='forum_complaints', verbose_name="Post")
+    comment = models.ForeignKey(ForumComment, on_delete=models.CASCADE, null=True, blank=True, related_name='forum_complaints', verbose_name="Comment")
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='forum_complaints_received', verbose_name="Reported User")
+    title = models.CharField(max_length=200, verbose_name="Title")
+    description = models.TextField(verbose_name="Description")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Status")
+    manager_response = models.TextField(blank=True, verbose_name="Manager Response")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Complaint Time")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Time")
+
+    class Meta:
+        verbose_name = "Forum Complaint"
+        verbose_name_plural = "Forum Complaints"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Forum Complaint: {self.title} - Reported by {self.complainant.username}"
 
 

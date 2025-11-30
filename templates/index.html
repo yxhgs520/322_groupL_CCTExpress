@@ -132,40 +132,6 @@
     </div>
 </section>
 
-<!-- Top Chefs Section -->
-{% if top_chefs %}
-<section class="py-5">
-    <div class="container">
-        <h2 class="text-center mb-5">
-            <i class="fas fa-chef-hat text-success"></i> Our Top Chefs
-        </h2>
-        <div class="row">
-            {% for chef in top_chefs %}
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="fas fa-user-circle fa-4x text-primary mb-3"></i>
-                        <h5 class="card-title">{{ chef.user.get_full_name|default:chef.user.username }}</h5>
-                        <p class="card-text">Chef</p>
-                        <div class="rating-stars">
-                            {% for i in "12345" %}
-                                {% if forloop.counter <= chef.get_average_rating %}
-                                    <i class="fas fa-star"></i>
-                                {% else %}
-                                    <i class="far fa-star"></i>
-                                {% endif %}
-                            {% endfor %}
-                            <small class="text-muted ms-1">({{ chef.get_average_rating|floatformat:1 }})</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
 <!-- Full Menu Section -->
 <section class="py-5 bg-light">
     <div class="container">
@@ -213,6 +179,46 @@
         </div>
     </div>
 </section>
+
+<!-- Top Chefs Section -->
+{% if top_chefs %}
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-chef-hat text-success"></i> Our Top Chefs
+        </h2>
+        <div class="row">
+            {% for chef in top_chefs %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        {% if chef.user.username == "Chef_A" or chef.user.username == "chef_a" %}
+                            <img src="/media/chefs/Chef_A.jpg" alt="{{ chef.user.get_full_name|default:chef.user.username }}" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% elif chef.user.username == "Chef_B" or chef.user.username == "chef_b" %}
+                            <img src="/media/chefs/Chef_B.jpg" alt="{{ chef.user.get_full_name|default:chef.user.username }}" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <i class="fas fa-user-circle fa-4x text-primary mb-3"></i>
+                        {% endif %}
+                        <h5 class="card-title">{{ chef.user.get_full_name|default:chef.user.username }}</h5>
+                        <p class="card-text">Chef</p>
+                        <div class="rating-stars">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= chef.get_average_rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <small class="text-muted ms-1">({{ chef.get_average_rating|floatformat:1 }})</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
 
 <script>
 function addToCart(dishId) {

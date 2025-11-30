@@ -176,6 +176,6 @@ OPENROUTESERVICE_API_KEY = os.getenv('OPENROUTESERVICE_API_KEY', '')
 OPENROUTESERVICE_BASE_URL = 'https://api.openrouteservice.org/v2/directions'
 
 # Restaurant default location (you can change this to your restaurant's coordinates)
-RESTAURANT_LATITUDE = 40.7128  # New York City coordinates (example)
-RESTAURANT_LONGITUDE = -74.0060
-RESTAURANT_ADDRESS = "123 Main St, New York, NY 10001"  # Example address
+RESTAURANT_LATITUDE = 40.8198  # 160 Convent Ave, New York, NY 10031 coordinates
+RESTAURANT_LONGITUDE = -73.9492
+RESTAURANT_ADDRESS = "160 Convent Ave, New York, NY 10031"
